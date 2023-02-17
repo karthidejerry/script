@@ -1,0 +1,44 @@
+NodeIPlist=192.168.0.1 ## (node ips are separated by ",")
+
+#############################################
+
+XCCRegister_Name=redundancycntrl0  ## (register names separated by ";")
+##Register_Name=slot3/lm810;slot7/lm810  ## (register names separated by ";")
+Register_bit=9  #8,16,32 #default 16 
+Register_Value=hex # binary #,decimal # default hex
+Register_offset=0,1,2,3 ## default value 0;
+
+
+
+#############################################################
+
+#Objects_and_Attributes=<object name>;<attribute1>,<attribute2>,...,<attribute2> #object name & attribute separated by ";" and each attribute separated by ",".
+#Objects_and_Attributes=SFP-1-2-5;PECCode,ProductCode,LaserBiasHighThreshold,Parent
+#Objects_and_Attributes=System-1;NodeType
+#Objects_and_Attributes=Card_TXC-1-3;Temp
+
+
+###############################################################
+
+CLI_command=uptime,netstat -su,netstat -c --udp –an,cat /proc/net/udp,ifconfig mate,ifconfig icc;
+#CLI_command=find /etc/zzzz/log -type f -size +2010k -exec ls -lh {} \; | awk '{ print $9 ": " $5 }'
+
+#################################################################
+#Tsh_command=df -kh | grep /dev/sda5
+
+#Folder_check=/etc/zzzz/log
+
+
+
+
+#############################################
+UI_username=ASDFG  # default GUI username 'zzzz'
+UI_password=qwerty  # default GUI password 'qwerty'
+ssh_username=guest # default telnet user guest
+ssh_password=asdf # default telnet password "asdf"
+SU_password=  # default password "zxzx"  
+Exp_timeout=100        # default 60
+Collect_info_from_secondary=enable  # default disable, valid entries are only "enable"  or "disable"
+Collect_info_on_xcc=enable
+Collect_info_on_trib=disable
+File_Name=Threshold.csv
