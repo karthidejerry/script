@@ -1,10 +1,8 @@
-#!/usr/sbin/perl
-
 use strict;
 use Expect;
 use NE;
 
-die "Usage: collect1418.pl <Input File> \n Version 1.0 "  if(@ARGV<1);
+die "Usage: collectNEinfo.pl <Input File> \n Version 1.0 "  if(@ARGV<1);
 my $file_name = shift;
 my %INPUT=();
 my $SuccessFlag;
@@ -19,7 +17,7 @@ printLogHeader();
 Arrange_Input_Value($file_name);
 
 
-my $fileName=$INPUT{"File_Name"};
+my $fileName="NE_info.csv";
 #$fhs=newOpenfile($fileName);
 if(-e $fileName) {
 	$fhs=newOpenfile($fileName);
@@ -27,68 +25,18 @@ if(-e $fileName) {
 }
 else {
 	my $heading = "Node IP,";
-	$heading .= "Master,";
-	if($INPUT{"Collect_info_on_xcc"} =~ /enable/i) {
-	foreach my $regVal (@{$INPUT{"XCCRegHash"}}) {
+	foreach my $regVal (@{$INPUT{"RegHash"}}) {
 		foreach my $offsetVal (@{$INPUT{"Register_offset"}}) {
 		$heading .= $regVal."[".$offsetVal."],";
 		}
 	}
-    }
-	if($INPUT{"Collect_info_on_trib"} =~ /enable/i) {
-	 foreach my $regVal (@{$INPUT{"RegHash"}}) {
-		foreach my $offsetVal (@{$INPUT{"Register_offset"}}) {
-		$heading .= $regVal."[".$offsetVal."],";
-		}
-	}
-	}
-	foreach my $cliVal (@{$INPUT{"CLI_command"}}) {
-		if($cliVal =~ /uptime/i) {
-		$heading .= "uptime , load average, ";
-		}
-		else {
-		$heading .= $cliVal." ,";
-		}
-	}
-          foreach my $tshVal (@{$INPUT{"Tsh_command"}}) {
-           $heading .= $tshVal." ,";
-           $heading .= "Thershold,";  
-                } 
-       foreach my $folVal (@{$INPUT{"Folder_check"}}) {
-           $heading .= $folVal." ,";
-                }
 	if($INPUT{"Collect_info_from_secondary"} =~ /enable/i) {
-	$heading .= "Slave,";
-	if($INPUT{"Collect_info_on_xcc"} =~ /enable/i) {
-	foreach my $regVal (@{$INPUT{"XCCRegHash"}}) {
-		foreach my $offsetVal (@{$INPUT{"Register_offset"}}) {
-		$heading .= $regVal."[".$offsetVal."] from slave card,";
-		}
-	}
-    }
-	if($INPUT{"Collect_info_on_trib"} =~ /enable/i) {
 		        foreach my $regVal (@{$INPUT{"RegHash"}}) {
                 foreach my $offsetVal (@{$INPUT{"Register_offset"}}) {
                 $heading .= $regVal."[".$offsetVal."] from slave card,";
                 }
         }
-		}
-        foreach my $cliVal (@{$INPUT{"CLI_command"}}) {
-		if($cliVal =~ /uptime/i) {
-		$heading .= "uptime , load average,";
-		}
-		else {
-                $heading .= $cliVal." ,";
-		}
-        }
- foreach my $tshVal (@{$INPUT{"Tsh_command"}}) {
-           $heading .= $tshVal."Slave card,";
-	   $heading .= "SlaveThershold,";
-                }
-         
-foreach my $folVal (@{$INPUT{"Folder_check"}}) {
-           $heading .= $folVal."Slave card,";
-                } 
+
 	}
 
 	if($INPUT{"ObjectHash"} ne undef) {
@@ -112,7 +60,7 @@ sub main {
 		$SuccessFlag=0;
 		$SuccessFlag=checkNodeAccessibility($IP);
 		next if($SuccessFlag != 1);
-		if (($INPUT{"Reg_req"} == 1) or ($INPUT{"CLI_req"} == 1) or ($INPUT{"TSH_req"} == 1) or ($INPUT{"XCCReg_req"} == 1) ) {	
+		if ($INPUT{"Reg_req"} == 1) {	
 #			my $cmd ="ssh guest\@$IP \n";
 			my $cmd ="telnet $IP 2023 \n";
 			my $exp = Expect->spawn($cmd) or die "Cannot spawn telnet: $!\n";
@@ -121,162 +69,49 @@ sub main {
 			$SuccessFlag=Login_and_SU($exp,$IP,$INPUT{"Exp_timeout"},"Master");
 			if($SuccessFlag) {
 				my $prompt = findbashprompt($exp,$INPUT{"Exp_timeout"});
-               		        my $cardno = "cat /etc/zzzz/config/processorSlot.conf";
-                            my $card_val = cli_read($exp,$cardno,$prompt,$INPUT{"Exp_timeout"});
-							push (@cvsString,$card_val); 				
 				if($SuccessFlag == 1) {
-                    if($INPUT{"Collect_info_on_xcc"} =~ /enable/i) {
-					 foreach my $Vcmd(@{$INPUT{"XCCRegHash"}}) {  #@RegVaaalue
-						my $regVal = $INPUT{"RegVal"};
-						foreach my $offsetValue (@{$INPUT{"Register_offset"}}) {
-							my $cmd = "echo \"$regVal $offsetValue q\"| /usr/sbin/zzzz/test /dev/slot$card_val/$Vcmd |grep \"Read value\"";
-							my $Reg_string = RegRead($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
-							chomp($Reg_string);
-							push (@cvsString,$Reg_string);
-					} } }
-                    if($INPUT{"Collect_info_on_trib"} =~ /enable/i) {     					
 					foreach my $Vcmd(@{$INPUT{"RegHash"}}) {  #@RegVaaalue
 						my $regVal = $INPUT{"RegVal"};
 						foreach my $offsetValue (@{$INPUT{"Register_offset"}}) {
-							my $cmd = "echo \"$regVal $offsetValue q\"| /usr/sbin/zzzz/test /dev/$Vcmd |grep \"Read value\"";
+							my $cmd = "echo \"$regVal $offsetValue q\"| /usr/sbin/qwerty/test /dev/$Vcmd |grep \"Read value\"";
 							my $Reg_string = RegRead($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
 							chomp($Reg_string);
 							push (@cvsString,$Reg_string);
 						}
-					} }}
-					foreach my $cliVal (@{$INPUT{"CLI_command"}}) {
-						my $cli_val = cli_read($exp,$cliVal,$prompt,$INPUT{"Exp_timeout"});
-						push(@cvsString,$cli_val);
 					}
-	
-					foreach my $tshVal (@{$INPUT{"Tsh_command"}}) {	
-                                                my $cmd = "$tshVal | awk '{print \$5}'";
-                                                my $tsh_val = cli_read($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
-                                                push(@cvsString,$tsh_val);
-					my $threshold = "60%";
-					if ($tsh_val >= $threshold){
-                                                my $tsh_val = "Yes";
-                                                push(@cvsString,$tsh_val);
-                                        
 				}
-					else{                                        
-         				my $tsh_val = "No";
-                                        push(@cvsString,$tsh_val);
-					}}
-					foreach my $folVal (@{$INPUT{"Folder_check"}}) {
-                                                my $sd2 = q(-type f -size +2000k -exec ls -lh {} \; | awk '{ print $9 ":" $5 }');
-                                                my $cmd = "find $folVal $sd2";
-						my $fol_val = tsh_read($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
-						push(@cvsString,$fol_val);						
-                                       }
-
-}
 				if($INPUT{"Collect_info_from_secondary"} =~ /enable/i) {
-                                        my $prompt = findbashprompt($exp,$INPUT{"Exp_timeout"});
 					my $secondaryip = getsecondaryip($exp,$prompt,$INPUT{"Exp_timeout"}); 
 					my $secondary_SuccessFlag=0;
 					$secondary_SuccessFlag=checkSlotAccessibility($exp,$secondaryip,$prompt,$INPUT{"Exp_timeout"});
 					if($secondary_SuccessFlag) {
 						my $cmd = "telnet $secondaryip 2023";
 						$exp->send("$cmd \n");
+						sleep 2;
 						$secondary_SuccessFlag = Login_and_SU($exp,$secondaryip,$INPUT{"Exp_timeout"},"Slave");
-                                               {
-                                               my $prompt = findbashprompt($exp,$INPUT{"Exp_timeout"});   
-					       my $cardno = "cat /etc/zzzz/config/processorSlot.conf";
-					       my $card_val = cli_read($exp,$cardno,$prompt,$INPUT{"Exp_timeout"});
-					       push (@cvsString,$card_val);    
-							if($secondary_SuccessFlag == 1) { 
-                            if($INPUT{"Collect_info_on_xcc"} =~ /enable/i) {
-							foreach my $Vcmd(@{$INPUT{"XCCRegHash"}}) {  #@RegVaaalue
-							my $regVal = $INPUT{"RegVal"};
-							foreach my $offsetValue (@{$INPUT{"Register_offset"}}) {
-							my $cmd = "echo \"$regVal $offsetValue q\"| /usr/sbin/zzzz/test /dev/slot$card_val/$Vcmd |grep \"Read value\"";
-							my $Reg_string = RegRead($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
-							chomp($Reg_string);
-							push (@cvsString,$Reg_string);
-					} 
-} 
-}
-                    if($INPUT{"Collect_info_on_trib"} =~ /enable/i) {                            
+							if($secondary_SuccessFlag == 1) {
 							foreach my $Vcmd(@{$INPUT{"RegHash"}}) {  #@RegVaaalue
 								my $regVal = $INPUT{"RegVal"};
 								foreach my $offsetValue (@{$INPUT{"Register_offset"}}) {
-								my $cmd = "echo \"$regVal $offsetValue q\"| /usr/sbin/zzzz/test /dev/$Vcmd |grep \"Read value\"";
-								my $Reg_string = RegRead($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
-								chomp($Reg_string);
-								push (@cvsString,$Reg_string);
+									my $cmd = "echo \"$regVal $offsetValue q\"| /usr/sbin/qwerty/test /dev/$Vcmd |grep \"Read value\"";
+									my $Reg_string = RegRead($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
+									chomp($Reg_string);
+									push (@cvsString,$Reg_string);
 								}
 							}
-						        } }                                
-                                        foreach my $cliVal (@{$INPUT{"CLI_command"}}) {
-										my $cli_val = cli_read($exp,$cliVal,$prompt,$INPUT{"Exp_timeout"});                                                
-										push(@cvsString,$cli_val);
 						}
-												foreach my $tshVal (@{$INPUT{"Tsh_command"}}) {
-                                                my $cmd = "$tshVal | awk '{print \$5}'";
-                                                my $tsh_val = cli_read($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
-                                                push(@cvsString,$tsh_val);
-                                                #print("Slave output $tsh_val \n");
-                                        my $threshold = "60%";
-                                        if ($tsh_val >= $threshold){
-                                                my $tsh_val = "Yes";
-                                                push(@cvsString,$tsh_val);
-
-                                }
-                                        else{
-                                        my $tsh_val = "No";
-                                        push(@cvsString,$tsh_val);
-                                        }
-}
-					foreach my $folVal (@{$INPUT{"Folder_check"}}) {
-                                                my $sd2 = q(-type f -size +2000k -exec ls -lh {} \; | awk '{ print $9 ":" $5 }');
-                                                my $cmd = "find $folVal $sd2";
-                                                my $fol_val = tsh_read($exp,$cmd,$prompt,$INPUT{"Exp_timeout"});
-                                                push(@cvsString,$fol_val);
-                                       } 
-                                              
-                                               my $prompt = findbashprompt($exp,$INPUT{"Exp_timeout"});
-					       Exit_from_SUnTelnet($exp,$prompt,$INPUT{"Exp_timeout"});
-					}}
-                                                if($secondary_SuccessFlag == 0)  {
-                                                           {
-                                                            my $val = "Access error";
-                                                            push (@cvsString, $val);
-                                                           }
-                                                       if($INPUT{"Collect_info_on_xcc"} =~ /enable/i) {
+						Exit_from_SUnTelnet($exp,$prompt,$INPUT{"Exp_timeout"});
+					}
+                                                if($secondary_SuccessFlag == 0) {
                                                         foreach my $regVal (@{$INPUT{"RegHash"}}) {
                                                                 foreach my $offsetVal (@{$INPUT{"Register_offset"}}) {
                                                                         my $val = "Access error";
                                                                         push (@cvsString, $val);
                                                                 }
                                                         }
-                                                          }
-                                                        if($INPUT{"Collect_info_on_trib"} =~ /enable/i) { 
-                                                        foreach my $regVal (@{$INPUT{"RegHash"}}) {
-                                                                foreach my $offsetVal (@{$INPUT{"Register_offset"}}) {
-                                                                        my $val = "Access error";
-                                                                        push (@cvsString, $val);
-                                                                }
-                                                        } 
-                                                          }
-							foreach my $cliVal (@{$INPUT{"CLI_command"}}) {
-								my $val = "Access error";
-								push (@cvsString, $val);
-							}		
-							foreach my $tshVal (@{$INPUT{"Tsh_command"}}) {
-                                                                my $val = "Access error";
-                                                                push (@cvsString, $val);
-                                                                my $val = "Access error";
-                                                                push (@cvsString, $val);
-							} 
-                                                          foreach my $folVal (@{$INPUT{"Folder_check"}}) {
-                                                                my $val = "Access error";
-                                                                push (@cvsString, $val);
-                                                        }
-                                       		}
- 
-                                my $prompt = findbashprompt($exp,$INPUT{"Exp_timeout"});
-                               Exit_from_SUnTelnet($exp,$prompt,$INPUT{"Exp_timeout"});      
+                                                }
+				}
+				Exit_from_SUnTelnet($exp,$prompt,$INPUT{"Exp_timeout"}); #$exp,$prompt,$timeOut
 			}
 		}
 		if (($INPUT{"Obj_req"} == 1) and ($SuccessFlag == 1)) {
@@ -341,11 +176,7 @@ sub Arrange_Input_Value{
 	close DATA;
 	my $reg_bit;
 	my $Reg_req = 0;
-	my $XCCReg_req = 0; 
 	my $Obj_req = 0;
-	my $cli_req = 0;
-	my $tsh_req = 0;
-    my $check_reg = 0;
 	foreach my $out (@output) {
 		next if (!defined($out));
 		next if($out =~ /^#/);
@@ -367,12 +198,6 @@ sub Arrange_Input_Value{
 			my @RegVl = split(/;/,$value);	
 			$INPUT{"RegHash"} = \@RegVl;
 			$Reg_req = 1;
-
-		}
-		elsif ($inpArg =~ /^XCCRegister_Name/i) {
-			my @RegVl = split(/;/,$value);	
-			$INPUT{"XCCRegHash"} = \@RegVl;
-			$XCCReg_req = 1;
 
 		}
 		elsif($inpArg =~ /^Register_bit/i) {
@@ -404,48 +229,19 @@ sub Arrange_Input_Value{
 			$INPUT{"Collect_info_from_secondary"} = $value if($value =~ /^enable$|^disable$/i);
 			
 		}
-		elsif($inpArg =~ /^Collect_info_on_xcc/i) {
-			$INPUT{"Collect_info_on_xcc"} = $value if($value =~ /^enable$|^disable$/i);
-			
-		}
-		elsif($inpArg =~ /^Collect_info_on_trib/i) {
-			$INPUT{"Collect_info_on_trib"} = $value if($value =~ /^enable$|^disable$/i);
-			
-		}
 		elsif($inpArg =~ /^Exp_timeout/i) {
 			$INPUT{"Exp_timeout"} = $value;
-		}
-		elsif($inpArg =~ /^CLI_command/i) {
-			my @cmd_array = split(/,/,$value);
-			$INPUT{"CLI_command"} = \@cmd_array;
-			$cli_req=1;		
-			}
-		elsif($inpArg =~ /^Tsh_command/i) {
-                        my @cmd_array = split(/,/,$value);
-                        $INPUT{"Tsh_command"} = \@cmd_array;
-                        $tsh_req=1;
-			}
-                elsif($inpArg =~ /^Folder_check/i) {
-                        my @cmd_array = split(/,/,$value);
-                        $INPUT{"Folder_check"} = \@cmd_array;
-                        $check_reg=1;
-                        }
-		elsif($inpArg =~ /^File_Name/i) {	
-			$INPUT{"File_Name"} = $value;
 		}
 
 	}
 	$INPUT{"Register_offset"} = 0 if(!($INPUT{"Register_offset"}));
-	$INPUT{"UI_username"} = "zzzz" if(!($INPUT{"UI_username"}));
-	$INPUT{"UI_password"} = "qwerty" if(!($INPUT{"UI_password"}));
+	$INPUT{"UI_username"} = "qwerty" if(!($INPUT{"UI_username"}));
+	$INPUT{"UI_password"} = "12345" if(!($INPUT{"UI_password"}));
 	$INPUT{"ssh_username"} = "guest" if(!($INPUT{"ssh_username"}));
-	$INPUT{"ssh_password"} = "asdf" if(!($INPUT{"ssh_password"}));
-	$INPUT{"SU_password"} = "swtn100tj" if(!($INPUT{"SU_password"}));	
+	$INPUT{"ssh_password"} = "123456" if(!($INPUT{"ssh_password"}));
+	$INPUT{"SU_password"} = "123456789" if(!($INPUT{"SU_password"}));	
 	$INPUT{"Collect_info_from_secondary"} = "disable" if(!($INPUT{"Collect_info_from_secondary"}));
-	$INPUT{"Collect_info_on_xcc"} = "disable" if(!($INPUT{"Collect_info_on_xcc"}));
-	$INPUT{"Collect_info_on_trib"} = "disable" if(!($INPUT{"Collect_info_on_trib"}));
 	$INPUT{"Exp_timeout"} = 60 if(!($INPUT{"Exp_timeout"}));
-	$INPUT{"File_Name"} = "NE_info.csv" if(!($INPUT{"File_Name"}));
 	if(!$reg_bit) {
 		$reg_bit = 8
 	}
@@ -457,10 +253,6 @@ sub Arrange_Input_Value{
 	$INPUT{"RegVal"} = $reg_bit;
 	$INPUT{"Obj_req"} = $Obj_req;
 	$INPUT{"Reg_req"} = $Reg_req;
-	$INPUT{"XCCReg_req"} = $XCCReg_req;
-	$INPUT{"CLI_req"} = $cli_req;
-    $INPUT{"TSH_req"} = $tsh_req;
-    $INPUT{"FOL_reg"} = $check_reg;
 }
 
 
@@ -479,62 +271,8 @@ sub validateInputFile {
 
 
 
-sub cli_read {
-$DB::signal=10;
-	my($exp,$cmd,$prompt,$TimeOut)=@_;
-	$exp->send("\n");
-	$exp->expect($TimeOut, -re, "$prompt");
-	sleep(3);
-	$exp->send("$cmd \r");
-	$exp->expect($TimeOut, -re, "$prompt");
-	my $clivalue = $exp->exp_before();
-	my $value;
-	my @allarray = split (/\r\n/,$clivalue);
-	$allarray[1] =~ s/\cJ|\cI|\cM|\cH/ /g;
-	$allarray[1] =~ s/\r,/  /g;
-	if($allarray[0] =~ /uptime/i) {
-		$allarray[1] =~ /(up)(.*)(load average:)(.*)/;
-		$value = $2." ,".$4;
-	}
-	elsif($allarray[0] =~ /fdisk -l/i) {
-		comment("$clivalue",1);	
-		my $header = shift @allarray;
-		$value = join("-",@allarray);	
-	}
-	else {
-		$value = $allarray[1];
-	}
-	return $value;
-}
 
-sub tsh_read {
-$DB::signal=10;
-        my($exp,$cmd,$prompt,$TimeOut)=@_;
-        $exp->send("\n");
-        $exp->expect($TimeOut, -re, "$prompt");
-        sleep(3);
-        $exp->send("$cmd \r");
-        $exp->expect($TimeOut, -re, "$prompt");
-        my $clivalue = $exp->exp_before();
-        my $value;
-        my @allarray = split (/\r\n/,$clivalue);
-        $allarray[1] =~ s/\cJ|\cI|\cM|\cH/ /g;
-        $allarray[1] =~ s/,/  /g;
-        if($allarray[0] =~ /uptime/i) {
-                $allarray[1] =~ /(up)(.*)(load average:)(.*)/;
-                $value = $2." ,".$4;
-        }
-        elsif($allarray[0] =~ /find/i) {
-                comment("$clivalue",1);
-                my $header = shift @allarray;
-                $value = join("-",@allarray);
-        }
-        else {
-                $value = $allarray[1];
 
-        }
-        return $value;
-}
 
 
 sub RegRead{
@@ -631,14 +369,14 @@ sub Login_and_SU {
         my $sys_username = $INPUT{"ssh_username"};
         my $sys_user_passwd = $INPUT{"ssh_password"};
         my $su_passwd = $INPUT{"SU_password"};
-        my $prompt = "\$";
+        my $prompt = ">";
         my $nologin = login($exp,$sys_username,$sys_user_passwd);
         if (!$nologin) {
 		comment("Connected to: $NodeIP");
                 AddEnter($exp,$prompt,$timeOut);
                 my $whoami =becomeSU($exp,$su_passwd,$card,$timeOut);
                 if ($whoami) {
-                        AddEnter2($exp,$prompt,$timeOut);
+                        AddEnter($exp,$prompt,$timeOut);
                         return 1;
                 }
                 else {
@@ -658,11 +396,12 @@ sub Login_and_SU {
 sub Exit_from_SUnTelnet {
         my ($exp,$prompt,$timeOut) =@_;
         $exp->send("exit \n");
-        $exp->expect($timeOut, -re,"\$");        
+        $exp->expect($timeOut, -re,"$prompt");
         $exp->send("exit \n");
         $exp->expect($timeOut, -re,"$prompt");
-        sleep 3;
 }
+
+
 
 #*****************************************************
 
@@ -712,22 +451,12 @@ sub findbashprompt {
         my ($exp,$TimeOut) = @_;
         $exp->clear_accum();
         $exp->send("\n");
-        $exp->expect($TimeOut, -re,"#");
+        $exp->expect($TimeOut, -re,">");
         my $bashname = $exp->exp_before();
         $bashname =~ s/\cJ|\cI|\cM//g;
         $exp->clear_accum();
-        return ($bashname."#");
-} 
+        return $bashname.">";
 
-sub findbashprompt2 {
-        my ($exp,$TimeOut) = @_;
-        $exp->clear_accum();
-        $exp->send("\n");
-        $exp->expect($TimeOut, -re,"\$");
-        my $bashname = $exp->exp_after();
-        $bashname =~ s/\cJ|\cI|\cM//g;
-        $exp->clear_accum();
-        return $bashname."\$";
 }
 
 =item
@@ -738,18 +467,7 @@ Add one enter
 
 sub AddEnter {
         my ($exp,$prompt,$timeOut) = @_;
-        $prompt = "\$" if(!($prompt));
-        $timeOut = 60 if(!($timeOut));
-        $exp->send("\n");
-        $exp->expect($timeOut, -re,"$prompt");
-        $exp->clear_accum();
-        return;
-
-}
-
-sub AddEnter2 {
-        my ($exp,$prompt,$timeOut) = @_;
-        $prompt = "#" if(!($prompt));
+        $prompt = ">" if(!($prompt));
         $timeOut = 60 if(!($timeOut));
         $exp->send("\n");
         $exp->expect($timeOut, -re,"$prompt");
@@ -774,17 +492,17 @@ sub becomeSU {
         login($exp,"root",$passwd);
         my $whoami;
         $exp->send("\n");
-        $exp->expect($TimeOut, -re,"#");
+        $exp->expect($TimeOut, -re,">");
         $exp->clear_accum();
         $exp->send("whoami\n");
-        $exp->expect($TimeOut,[ qr 'root', sub { $whoami = 1;exp_continue;}],[ qr 'guest', sub { print " Still guest user";exp_continue;}],'-re',qr'[#>:$] $');
+        $exp->expect($TimeOut,[ qr 'root', sub { $whoami = 1;exp_continue;}],[ qr 'guest', sub { print " Still guest user";exp_continue;}],'-re',qr'[#>:] $');
         if($whoami == 1) {
             comment (" Becoming super user on $which card \n", 1);
             return(1);
         }
-        $maxIterations -= 3;
+        $maxIterations -= 1;
         $exp->send("\n");
-        $exp->expect($TimeOut, -re,"#");
+        $exp->expect($TimeOut, -re,">");
     }
         comment("\n Access Error:: login as super user on $which card");
 }
@@ -856,7 +574,7 @@ sub login {
                         ],
 
                         '-re',
-                        qr'[#>:$] $',
+                        qr'[#>:] $',
 
                         );
                         $exp->clear_accum();
@@ -919,7 +637,7 @@ sub comment {
     if(!defined $skipPrint) {
         print "\n$string";
     }
-    print $fh "$string\n";
+    print $fh "$string \n";
     if(!defined $skipPrint) {
         while ($count < 1) {
             print ("\n");
